@@ -298,7 +298,7 @@ if Code.ensure_loaded?(Igniter) do
             """
         end)
 
-      cl_update_summary_file(summary_text)
+      if !Enum.empty?(process_packages), do: cl_update_summary_file(summary_text)
     end
 
     defp cl_read_changelogs(package_names) do
