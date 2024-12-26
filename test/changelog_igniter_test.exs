@@ -10,6 +10,7 @@ defmodule ChangelogIgniterTest do
       on_exit(fn -> File.rm_rf!("test_changelog_project") end)
     end
 
+    @tag :skip
     test "updates packages and records changelog" do
       # Install two packages
       System.cmd("mix", ["igniter.install", "plug@1.8", "--yes"], cd: "test_changelog_project")

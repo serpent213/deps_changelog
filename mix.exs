@@ -8,9 +8,13 @@ defmodule ChangelogIgniter.MixProject do
       elixir: "~> 1.16",
       start_permanent: Mix.env() == :prod,
       consolidate_protocols: Mix.env() != :dev,
-      deps: deps()
+      deps: deps(),
+      elixirc_paths: elixirc_paths(Mix.env())
     ]
   end
+
+  defp elixirc_paths(:test), do: ["lib", "test/fixtures"]
+  defp elixirc_paths(_), do: ["lib"]
 
   # Run "mix help compile.app" to learn about applications.
   def application do

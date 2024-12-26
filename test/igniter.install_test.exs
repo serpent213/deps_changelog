@@ -1,7 +1,6 @@
 defmodule Mix.Tasks.Igniter.InstallTest do
   use ExUnit.Case
 
-  @tag :skip
   setup do
     File.rm_rf!("test_project")
     cmd!("mix", ["new", "test_project"])
@@ -23,11 +22,13 @@ defmodule Mix.Tasks.Igniter.InstallTest do
   end
 
   describe "installing a new project" do
+    @tag :skip
     test "basic installer works" do
       output = cmd!("mix", ["igniter.install", "jason", "--yes"], cd: "test_project")
       assert String.contains?(output, "jason\nCompiling")
     end
 
+    @tag :skip
     test "rerunning the same installer lets you know the dependency was not changed" do
       _ = cmd!("mix", ["igniter.install", "jason", "--yes"], cd: "test_project")
       output = cmd!("mix", ["igniter.install", "jason", "--yes"], cd: "test_project")

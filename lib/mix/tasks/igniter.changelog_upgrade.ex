@@ -276,7 +276,7 @@ if Code.ensure_loaded?(Igniter) do
       end
     end
 
-    defp cl_before_update(original_deps_info) do
+    def cl_before_update(original_deps_info) do
       Enum.filter(original_deps_info, & &1.top_level)
       |> Enum.map(fn dep ->
         changelog_before = cl_read_changelog2(dep)
@@ -288,19 +288,12 @@ if Code.ensure_loaded?(Igniter) do
       end)
     end
 
-    defp cl_after_update(changelogs, dep_changes) do
+    def cl_after_update(changelogs, dep_changes, timestamp \\ nil) do
+      timestamp = timestamp || :calendar.local_time()
+
       # dep_changes #=> [
       #   {:money, %Version{major: 1, minor: 12, patch: 3}, %Version{major: 1, minor: 12, patch: 4}}
       # ]
-
-      # Build intersection of updated packages and available (before) changelogs
-      # all_deps_names = Enum.map(changelogs, &(&1.mix_dep.app))
-      # process_deps =
-      #   Enum.map(dep_changes, &elem(&1, 0))
-      #   |> Enum.filter(&(&1 in all_deps_names))
-      #   |> Enum.sort()
-
-      # changelogs_after = cl_read_changelogs(process_packages)
 
       process_deps =
         Enum.flat_map(changelogs, fn dep ->
@@ -339,7 +332,7 @@ if Code.ensure_loaded?(Igniter) do
         end)
         |> String.trim_trailing()
 
-      if summary_text != "", do: cl_update_summary_file(summary_text)
+      if summary_text != "", do: cl_update_summary_file(summary_text, timestamp)
     end
 
     defp cl_read_changelog(dep) do
@@ -395,7 +388,7 @@ if Code.ensure_loaded?(Igniter) do
       end)
     end
 
-    defp cl_update_summary_file(summary_text) do
+    defp cl_update_summary_file(summary_text, timestamp) do
       marker = "<!-- changelog -->"
 
       default_header = """
@@ -408,11 +401,10 @@ if Code.ensure_loaded?(Igniter) do
       #{marker}
       """
 
-      {{year, month, day}, _time} = :calendar.local_time()
-
       months =
         ~w(January February March April May June July August September October November December)
 
+      {{year, month, day}, _time} = timestamp
       local_date = "#{day}. #{Enum.at(months, month - 1)} #{year}"
       date_header = cl_underlined_md_heading("_#{local_date}_", 2) <> "\n\n"
 
