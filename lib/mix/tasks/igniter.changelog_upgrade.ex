@@ -1,6 +1,17 @@
 if Code.ensure_loaded?(Igniter) do
+  defmodule Mix.Tasks.Igniter.ChangelogUpgrade.Changelogs do
+    defstruct [:mix_dep, :changelog_before, :changelog_after]
+
+    @type t :: %__MODULE__{
+            mix_dep: %Mix.Dep{},
+            changelog_before: String.t(),
+            changelog_after: String.t()
+          }
+  end
+
   defmodule Mix.Tasks.Igniter.ChangelogUpgrade do
     use Igniter.Mix.Task
+    alias Mix.Tasks.Igniter.ChangelogUpgrade.Changelogs
 
     @example "mix igniter.changelog_upgrade package1 package2@1.2.1"
 
@@ -129,7 +140,9 @@ if Code.ensure_loaded?(Igniter) do
         |> Igniter.include_existing_file("mix.lock")
 
       original_mix_exs = Rewrite.Source.get(Rewrite.source!(igniter.rewrite, "mix.exs"), :content)
-      original_mix_lock = Rewrite.Source.get(Rewrite.source!(igniter.rewrite, "mix.lock"), :content)
+
+      original_mix_lock =
+        Rewrite.Source.get(Rewrite.source!(igniter.rewrite, "mix.lock"), :content)
 
       validate_packages!(packages)
 
@@ -138,7 +151,7 @@ if Code.ensure_loaded?(Igniter) do
         |> Enum.map(&(String.split(&1, "@") |> List.first()))
         |> Enum.map(&String.to_atom/1)
 
-      changelog_before = cl_before_update(package_names)
+      changelogs = cl_before_update(original_deps_info)
       update_deps_args = update_deps_args(options)
 
       igniter =
@@ -191,7 +204,7 @@ if Code.ensure_loaded?(Igniter) do
         dep_changes =
           dep_changes_in_order(original_deps_info, new_deps_info)
 
-        cl_after_update(changelog_before, dep_changes)
+        cl_after_update(changelogs, dep_changes)
 
         if !options[:git_ci] &&
              Enum.any?(dep_changes, fn {app, _, _} ->
@@ -263,42 +276,107 @@ if Code.ensure_loaded?(Igniter) do
       end
     end
 
-    defp cl_before_update(package_names), do: cl_read_changelogs(package_names)
+    defp cl_before_update(original_deps_info) do
+      Enum.filter(original_deps_info, & &1.top_level)
+      |> Enum.map(fn dep ->
+        changelog_before = cl_read_changelog2(dep)
 
-    defp cl_after_update(changelogs_before, dep_changes) do
+        %Changelogs{
+          mix_dep: dep,
+          changelog_before: changelog_before
+        }
+      end)
+    end
+
+    defp cl_after_update(changelogs, dep_changes) do
       # dep_changes #=> [
       #   {:money, %Version{major: 1, minor: 12, patch: 3}, %Version{major: 1, minor: 12, patch: 4}}
       # ]
 
-      # Build intersection of updated packges and available (before) changelogs
-      process_packages =
-        Enum.filter(Enum.map(dep_changes, &elem(&1, 0)), &(&1 in Keyword.keys(changelogs_before)))
+      # Build intersection of updated packages and available (before) changelogs
+      # all_deps_names = Enum.map(changelogs, &(&1.mix_dep.app))
+      # process_deps =
+      #   Enum.map(dep_changes, &elem(&1, 0))
+      #   |> Enum.filter(&(&1 in all_deps_names))
+      #   |> Enum.sort()
 
-      changelogs_after = cl_read_changelogs(process_packages)
+      # changelogs_after = cl_read_changelogs(process_packages)
+
+      process_deps =
+        Enum.flat_map(changelogs, fn dep ->
+          if List.keyfind(dep_changes, dep.mix_dep.app, 0) do
+            [%{dep | changelog_after: cl_read_changelog2(dep.mix_dep)}]
+          else
+            []
+          end
+        end)
 
       summary_text =
-        Enum.reduce(process_packages, "", fn package_name, acc ->
+        Enum.reduce(process_deps, "", fn dep, acc ->
+          package_name = dep.mix_dep.app
           {_name, old_version, new_version} = List.keyfind(dep_changes, package_name, 0)
-          changelog_before = Keyword.get(changelogs_before, package_name) |> String.split("\n")
-          changelog_after = Keyword.get(changelogs_after, package_name) |> String.split("\n")
-          diff = List.myers_difference(changelog_before, changelog_after)
 
-          # Gather all inserted blocks
+          diff =
+            List.myers_difference(
+              (dep.changelog_before || "") |> String.split("\n"),
+              (dep.changelog_after || "") |> String.split("\n")
+            )
+
+          # Gather all inserted blocks and perform some mutations
           insert_text =
             Enum.filter(diff, fn {op, _} -> op == :ins end)
             |> Enum.flat_map(&elem(&1, 1))
+            |> cl_limit_vertical_whitespace(2)
+            |> cl_shift_md_headings(2)
             |> Enum.join("\n")
-            |> String.trim_trailing()
 
           acc <>
-            """
-            # `#{package_name}` (#{old_version} ➞ #{new_version})
+            String.trim_trailing("""
+            ### `#{package_name}` (#{old_version} ➞ #{new_version})
 
             #{insert_text}
-            """
+            """) <> "\n\n\n"
         end)
+        |> String.trim_trailing()
 
-      if !Enum.empty?(process_packages), do: cl_update_summary_file(summary_text)
+      if summary_text != "", do: cl_update_summary_file(summary_text)
+    end
+
+    defp cl_read_changelog(dep) do
+      dest_path = dep.opts.dest
+
+      read_changelog =
+        File.read("#{dest_path}/CHANGELOG.md")
+        |> case do
+          {:error, _reason} -> File.read("#{dest_path}/CHANGELOG")
+          {:ok, _contents} = result -> result
+        end
+
+      case read_changelog do
+        {:ok, changelog_body} -> changelog_body
+        {:error, _reason} -> nil
+      end
+    end
+
+    defp cl_read_changelog2(dep) do
+      dest_path = dep.opts[:dest]
+
+      cond do
+        (
+          r = File.read("#{dest_path}/CHANGELOG.md")
+          match?({:ok, _}, r)
+        ) ->
+          elem(r, 1)
+
+        (
+          r = File.read("#{dest_path}/CHANGELOG")
+          match?({:ok, _}, r)
+        ) ->
+          elem(r, 1)
+
+        true ->
+          nil
+      end
     end
 
     defp cl_read_changelogs(package_names) do
@@ -323,24 +401,32 @@ if Code.ensure_loaded?(Igniter) do
       default_header = """
       # Dependencies Change Log
 
-      Auto-updated by Igniter. 💪
+      Auto-updated by `deps_changelog`. 💪
 
       Feel free to edit this file by hand. Updates will be inserted below the following marker:
 
       #{marker}
       """
 
+      {{year, month, day}, _time} = :calendar.local_time()
+
+      months =
+        ~w(January February March April May June July August September October November December)
+
+      local_date = "#{day}. #{Enum.at(months, month - 1)} #{year}"
+      date_header = cl_underlined_md_heading("_#{local_date}_", 2) <> "\n\n"
+
       updated_summary =
         case File.read("deps.CHANGELOG.md") do
           {:ok, content} ->
-            if String.contains?(content, marker) do
-              String.replace(content, marker, marker <> "\n\n" <> summary_text)
-            else
-              default_header <> "\n\n" <> summary_text
-            end
+            String.replace(
+              content,
+              marker,
+              marker <> "\n\n" <> date_header <> summary_text <> "\n\n"
+            )
 
           _ ->
-            default_header <> "\n\n" <> summary_text
+            default_header <> "\n" <> date_header <> summary_text <> "\n"
         end
 
       case File.write("deps.CHANGELOG.md", updated_summary) do
@@ -350,6 +436,45 @@ if Code.ensure_loaded?(Igniter) do
         {:error, reason} ->
           Mix.shell().error("Failed to write deps.CHANGELOG.md: #{inspect(reason)}")
       end
+    end
+
+    defp cl_underlined_md_heading(text, level) do
+      symbol =
+        case level do
+          1 -> "="
+          2 -> "-"
+          _ -> raise "Unsupported heading level: #{level}"
+        end
+
+      underlines = String.duplicate(symbol, String.length(text))
+      "#{text}\n#{underlines}"
+    end
+
+    defp cl_shift_md_headings(lines, shift) do
+      Enum.map(lines, fn line ->
+        case Regex.run(~r/^(#+) /, line) do
+          [_, old_prefix] ->
+            new_level = min(6, String.length(old_prefix) + shift)
+            new_prefix = String.duplicate("#", new_level)
+            String.replace_prefix(line, old_prefix, new_prefix)
+
+          _ ->
+            line
+        end
+      end)
+    end
+
+    defp cl_limit_vertical_whitespace(lines, max) do
+      # Limit the number of consecutive empty strings to `max`.
+      # Strips trailing whitespace.
+      Enum.reduce(lines, {0, []}, fn line, {empty_count, acc} ->
+        if String.trim(line) == "" do
+          {empty_count + 1, acc}
+        else
+          {0, acc ++ Enum.take(List.duplicate("", empty_count), max) ++ [line]}
+        end
+      end)
+      |> elem(1)
     end
 
     defp update_deps_args(options) do

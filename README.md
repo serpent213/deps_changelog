@@ -15,7 +15,7 @@ def deps do
   [
     {:changelog_igniter,
       git: "https://github.com/serpent213/changelog_igniter.git",
-      ref: "ebc8bf4ab411d27d19b5b21d83d98d7953df80fa",
+      branch: "master",
       only: :dev}
   ]
 end
@@ -26,6 +26,15 @@ end
 Run `mix igniter.changelog_upgrade [...]` instead of `mix igniter.upgrade`. Run `mix
 igniter.upgrade` instead of `mix deps.update`. File `deps.CHANGELOG.md` will be created
 or updated when package updates happen.
+
+## Debugging
+
+```
+$ iex --dbg pry -S mix
+iex> break! Mix.Tasks.Igniter.ChangelogUpgrade.igniter/1
+iex> break! Mix.Tasks.Igniter.ChangelogUpgrade.cl_after_update/2
+iex> Mix.Task.run "igniter.changelog_upgrade", ["--all"]
+```
 
 <!--
 Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
