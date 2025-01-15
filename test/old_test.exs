@@ -4,7 +4,7 @@ defmodule OldTest do
   @fixture_date {{2024, 12, 26}, {18, 21, 16}}
 
   @tag :tmp_dir
-  test "creates changelog", %{tmp_dir: tmp_dir} do
+  test "creates changelog (old)", %{tmp_dir: tmp_dir} do
     home = File.cwd!()
     on_exit(fn -> File.cd!(home) end)
     File.cp_r!("test/fixtures/before", tmp_dir)
@@ -30,7 +30,7 @@ defmodule OldTest do
   end
 
   @tag :tmp_dir
-  test "updates changelog", %{tmp_dir: tmp_dir} do
+  test "updates changelog (old)", %{tmp_dir: tmp_dir} do
     home = File.cwd!()
     on_exit(fn -> File.cd!(home) end)
     File.cp_r!("test/fixtures/before", tmp_dir)
