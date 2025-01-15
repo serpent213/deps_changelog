@@ -1,5 +1,5 @@
-defmodule SimpleTest do
-  use ExUnit.Case, async: true
+defmodule OldTest do
+  use ExUnit.Case, async: false
 
   @fixture_date {{2024, 12, 26}, {18, 21, 16}}
 
@@ -9,6 +9,7 @@ defmodule SimpleTest do
     on_exit(fn -> File.cd!(home) end)
     File.cp_r!("test/fixtures/before", tmp_dir)
     File.cd!(tmp_dir)
+    Mix.shell().info("OldTest working dir: #{File.cwd!()}")
     deps = Fixtures.MixDeps.deps()
 
     changelogs = Mix.Tasks.Igniter.ChangelogUpgrade.cl_before_update(deps)
@@ -35,6 +36,7 @@ defmodule SimpleTest do
     File.cp_r!("test/fixtures/before", tmp_dir)
     File.cp!("test/fixtures/new_changelog.md", "#{tmp_dir}/deps.CHANGELOG.md")
     File.cd!(tmp_dir)
+    Mix.shell().info("OldTest working dir: #{File.cwd!()}")
     deps = Fixtures.MixDeps.deps()
 
     changelogs = Mix.Tasks.Igniter.ChangelogUpgrade.cl_before_update(deps)

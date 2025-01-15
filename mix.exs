@@ -4,7 +4,7 @@ defmodule ChangelogIgniter.MixProject do
   def project do
     [
       app: :changelog_igniter,
-      version: "0.1.0",
+      version: "0.2.0",
       elixir: "~> 1.16",
       start_permanent: Mix.env() == :prod,
       consolidate_protocols: Mix.env() != :dev,
@@ -27,6 +27,7 @@ defmodule ChangelogIgniter.MixProject do
   defp deps do
     [
       {:igniter, "~> 0.5"}
+      # {:igniter, "~> 0.5", only: [:dev, :test]}
     ]
   end
 end

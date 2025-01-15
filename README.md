@@ -3,7 +3,7 @@
 **PROTOTYPE!**
 
 Find additions to dependency's CHANGELOG files upon update and accumulate them in
-a new `deps.CHANGELOG.md`. Based on [Igniter](https://github.com/ash-project/igniter).
+a new `deps.CHANGELOG.md`.
 
 ## Installation
 
@@ -23,7 +23,7 @@ end
 
 ## Usage
 
-Run `mix igniter.changelog_upgrade [...]` instead of `mix igniter.upgrade`. Run `mix
+Run `mix deps.changelog igniter.upgrade [...]` instead of `mix igniter.upgrade`. Run `mix
 igniter.upgrade` instead of `mix deps.update`. File `deps.CHANGELOG.md` will be created
 or updated when package updates happen.
 
@@ -31,9 +31,9 @@ or updated when package updates happen.
 
 ```
 $ iex --dbg pry -S mix
-iex> break! Mix.Tasks.Igniter.ChangelogUpgrade.igniter/1
-iex> break! Mix.Tasks.Igniter.ChangelogUpgrade.cl_after_update/2
-iex> Mix.Task.run "igniter.changelog_upgrade", ["--all"]
+iex> break! Mix.Tasks.Deps.Changelog.run/1
+iex> break! Mix.Tasks.Deps.Changelog.after_update/2
+iex> Mix.Task.run "deps.changelog", ["deps.update", "--all"]
 ```
 
 <!--
