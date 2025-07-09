@@ -41,36 +41,52 @@ defmodule Mix.Tasks.Deps.Changelog do
   end
 
   def run(["--before"]) do
-    original_deps_info = Mix.Dep.load_and_cache()
-    changelogs_before = before_update(original_deps_info)
-    record = {original_deps_info, changelogs_before}
+    try do
+      original_deps_info = Mix.Dep.load_and_cache()
+      changelogs_before = before_update(original_deps_info)
+      record = {original_deps_info, changelogs_before}
 
-    case File.write(@snapshot_filename, :erlang.term_to_binary(record)) do
-      :ok ->
-        :ok
+      case File.write(@snapshot_filename, :erlang.term_to_binary(record)) do
+        :ok ->
+          Mix.shell().info("Changelog snapshot created successfully")
 
-      {:error, reason} ->
-        Mix.shell().error("Failed to write #{@snapshot_filename}: #{:file.format_error(reason)}")
+        {:error, reason} ->
+          Mix.shell().error(
+            "Failed to write #{@snapshot_filename}: #{:file.format_error(reason)}"
+          )
+      end
+    rescue
+      e ->
+        Mix.shell().error("Error creating changelog snapshot: #{Exception.message(e)}")
+        Mix.shell().error("Stacktrace: #{Exception.format_stacktrace(__STACKTRACE__)}")
     end
   end
 
   def run(["--after"]) do
     case File.read(@snapshot_filename) do
       {:ok, binary} ->
-        {original_deps_info, changelogs_before} = :erlang.binary_to_term(binary)
-        Mix.Dep.clear_cached()
-        new_deps_info = Mix.Dep.load_and_cache()
-        dep_changes = dep_changes_in_order(original_deps_info, new_deps_info)
-        after_update(changelogs_before, dep_changes)
+        try do
+          {original_deps_info, changelogs_before} = :erlang.binary_to_term(binary)
+          Mix.Dep.clear_cached()
+          new_deps_info = Mix.Dep.load_and_cache()
+          dep_changes = dep_changes_in_order(original_deps_info, new_deps_info)
+          after_update(changelogs_before, dep_changes)
+          Mix.shell().info("Changelog processing completed successfully")
+        rescue
+          e ->
+            Mix.shell().error("Error processing changelog: #{Exception.message(e)}")
+            Mix.shell().error("Stacktrace: #{Exception.format_stacktrace(__STACKTRACE__)}")
+        after
+          # Always cleanup, even if processing fails
+          case File.rm(@snapshot_filename) do
+            :ok ->
+              :ok
 
-        case File.rm(@snapshot_filename) do
-          :ok ->
-            :ok
-
-          {:error, reason} ->
-            Mix.shell().error(
-              "Failed to remove #{@snapshot_filename}: #{:file.format_error(reason)}"
-            )
+            {:error, reason} ->
+              Mix.shell().error(
+                "Failed to remove #{@snapshot_filename}: #{:file.format_error(reason)}"
+              )
+          end
         end
 
       {:error, reason} ->
