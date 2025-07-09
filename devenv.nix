@@ -16,7 +16,7 @@ in {
 
   # https://devenv.sh/languages/
   languages.elixir.enable = true;
-  # languages.elixir.package = pkgs-stable.elixir_1_18;
+  # languages.elixir.package = pkgs.elixir_1_18;
 
   # See full reference at https://devenv.sh/reference/options/
 }

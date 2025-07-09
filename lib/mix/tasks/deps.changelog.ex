@@ -1,14 +1,3 @@
-defmodule Mix.Tasks.Deps.Changelog.Changelogs do
-  @enforce_keys [:mix_dep]
-  defstruct [:mix_dep, changelog_before: nil, changelog_after: nil]
-
-  @type t :: %__MODULE__{
-          mix_dep: %Mix.Dep{},
-          changelog_before: String.t() | nil,
-          changelog_after: String.t() | nil
-        }
-end
-
 defmodule Mix.Tasks.Deps.Changelog do
   @changelog_filename "deps.CHANGELOG.md"
   @snapshot_filename "deps.CHANGELOG.before.bin"
@@ -20,6 +9,7 @@ defmodule Mix.Tasks.Deps.Changelog do
   ## Examples
 
   ```bash
+  $ mix deps.changelog deps.update --all
   $ mix deps.changelog igniter.upgrade --all
   ```
 
@@ -38,7 +28,17 @@ defmodule Mix.Tasks.Deps.Changelog do
     * `--after` - create another snapshot, process diff and update `#{@changelog_filename}`
   """
   use Mix.Task
-  alias Mix.Tasks.Deps.Changelog.Changelogs
+
+  defmodule Changelogs do
+    @enforce_keys [:mix_dep]
+    defstruct [:mix_dep, changelog_before: nil, changelog_after: nil]
+
+    @type t :: %__MODULE__{
+            mix_dep: %Mix.Dep{},
+            changelog_before: String.t() | nil,
+            changelog_after: String.t() | nil
+          }
+  end
 
   def run(["--before"]) do
     original_deps_info = Mix.Dep.load_and_cache()

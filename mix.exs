@@ -3,12 +3,13 @@ defmodule ChangelogIgniter.MixProject do
 
   def project do
     [
-      app: :changelog_igniter,
-      version: "0.2.0",
+      app: :deps_changelog,
+      version: "0.3.0",
       elixir: "~> 1.16",
       start_permanent: Mix.env() == :prod,
       consolidate_protocols: Mix.env() != :dev,
       deps: deps(),
+      aliases: aliases(),
       elixirc_paths: elixirc_paths(Mix.env())
     ]
   end
@@ -26,8 +27,13 @@ defmodule ChangelogIgniter.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:igniter, "~> 0.5"}
-      # {:igniter, "~> 0.5", only: [:dev, :test]}
+      {:igniter, "~> 0.5", only: [:dev]}
+    ]
+  end
+
+  defp aliases do
+    [
+      update: ["deps.changelog deps.update --all"]
     ]
   end
 end

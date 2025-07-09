@@ -10,7 +10,6 @@ defmodule CoreTest do
     on_exit(fn -> File.cd!(home) end)
     File.cp_r!("test/fixtures/before", tmp_dir)
     File.cd!(tmp_dir)
-    Mix.shell().info("CoreTest working dir: #{File.cwd!()}")
     deps = Fixtures.MixDeps.deps()
 
     changelogs = Mix.Tasks.Deps.Changelog.before_update(deps)
@@ -37,7 +36,6 @@ defmodule CoreTest do
     File.cp_r!("test/fixtures/before", tmp_dir)
     File.cp!("test/fixtures/new_changelog.md", "#{tmp_dir}/deps.CHANGELOG.md")
     File.cd!(tmp_dir)
-    Mix.shell().info("CoreTest working dir: #{File.cwd!()}")
     deps = Fixtures.MixDeps.deps()
 
     changelogs = Mix.Tasks.Deps.Changelog.before_update(deps)
