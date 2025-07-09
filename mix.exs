@@ -1,10 +1,10 @@
-defmodule ChangelogIgniter.MixProject do
+defmodule DepsChangelog.MixProject do
   use Mix.Project
 
   def project do
     [
       app: :deps_changelog,
-      version: "0.3.1",
+      version: "0.3.2",
       elixir: "~> 1.16",
       start_permanent: Mix.env() == :prod,
       consolidate_protocols: Mix.env() != :dev,
@@ -33,7 +33,18 @@ defmodule ChangelogIgniter.MixProject do
 
   defp aliases do
     [
-      update: ["deps.changelog deps.update --all"]
+      update: [
+        # Isolated processes/Mix runners seem to work best when shuffling deps
+        "cmd mix deps.changelog --before",
+        "cmd mix deps.update igniter",
+        "cmd mix igniter.upgrade --all",
+        "cmd mix deps.changelog --after",
+        fn _args ->
+          Mix.shell().info(
+            "Run `mix igniter.apply_upgrades igniter:old_version:new_version` to finish igniter update!"
+          )
+        end
+      ]
     ]
   end
 end

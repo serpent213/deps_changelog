@@ -25,12 +25,25 @@ Run `mix deps.changelog igniter.upgrade [...]` instead of `mix igniter.upgrade`.
 igniter.upgrade` instead of `mix deps.update`. File `deps.CHANGELOG.md` will be created
 or updated when package updates happen.
 
-Add to your `mix.exs`:
+### Aliases
+
+When using [Igniter](https://hexdocs.pm/igniter/), you could add to your `mix.exs`:
 
 ```elixir
   defp aliases do
     [
-      update: ["deps.changelog igniter.upgrade"]
+      update: [
+        # Isolated processes/Mix runners seem to work best when shuffling deps
+        "cmd mix deps.changelog --before",
+        "cmd mix deps.update igniter",
+        "cmd mix igniter.upgrade --all",
+        "cmd mix deps.changelog --after",
+        fn _args ->
+          Mix.shell().info(
+            "Run `mix igniter.apply_upgrades igniter:old_version:new_version` to finish igniter update!"
+          )
+        end
+      ]
     ]
   end
 ```

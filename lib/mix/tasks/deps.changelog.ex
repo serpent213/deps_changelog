@@ -70,8 +70,16 @@ defmodule Mix.Tasks.Deps.Changelog do
           Mix.Dep.clear_cached()
           new_deps_info = Mix.Dep.load_and_cache()
           dep_changes = dep_changes_in_order(original_deps_info, new_deps_info)
-          after_update(changelogs_before, dep_changes)
-          Mix.shell().info("Changelog processing completed successfully")
+
+          case after_update(changelogs_before, dep_changes) do
+            {_, :updated} ->
+              Mix.shell().info("#{@changelog_filename} updated successfully")
+
+            {_, :no_changes} ->
+              Mix.shell().info(
+                "#{@changelog_filename} not updated (no changelog changes detected)"
+              )
+          end
         rescue
           e ->
             Mix.shell().error("Error processing changelog: #{Exception.message(e)}")
@@ -95,16 +103,11 @@ defmodule Mix.Tasks.Deps.Changelog do
   end
 
   def run([embedded_task | task_args]) do
-    # Mix.Task.run("deps.get")
-    original_deps_info = Mix.Dep.load_and_cache()
-    changelogs_before = before_update(original_deps_info)
+    Mix.Task.reenable("deps.changelog")
+    Mix.Task.run("deps.changelog", ["--before"])
     Mix.Task.run(embedded_task, task_args)
-    Mix.Dep.clear_cached()
-    # Mix.Task.reenable("compile")
-    # Mix.Task.run("compile")
-    new_deps_info = Mix.Dep.load_and_cache()
-    dep_changes = dep_changes_in_order(original_deps_info, new_deps_info)
-    after_update(changelogs_before, dep_changes)
+    Mix.Task.reenable("deps.changelog")
+    Mix.Task.run("deps.changelog", ["--after"])
   end
 
   @doc false
@@ -161,7 +164,12 @@ defmodule Mix.Tasks.Deps.Changelog do
       end)
       |> String.trim_trailing()
 
-    if summary_text != "", do: update_summary_file(summary_text, timestamp)
+    if summary_text != "" do
+      update_summary_file(summary_text, timestamp)
+      {summary_text, :updated}
+    else
+      {summary_text, :no_changes}
+    end
   end
 
   defp read_changelog(dep) do
