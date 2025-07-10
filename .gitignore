@@ -22,9 +22,6 @@ erl_crash.dump
 # Ignore package tarball (built via "mix hex.build").
 deps_changelog-*.tar
 
-# expublisher metadata
-RELEASE.md
-
 # Temporary files, for example, from tests.
 /tmp/
 

@@ -4,7 +4,7 @@ defmodule DepsChangelog.MixProject do
   def project do
     [
       app: :deps_changelog,
-      version: "0.3.2",
+      version: "0.3.3",
       elixir: "~> 1.16",
       start_permanent: Mix.env() == :prod,
       consolidate_protocols: Mix.env() != :dev,
@@ -45,8 +45,7 @@ defmodule DepsChangelog.MixProject do
   defp deps do
     [
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
-      {:ex_doc, "~> 0.27", only: :dev, runtime: false},
-      {:expublish, "~> 2.5", only: :dev, runtime: false}
+      {:ex_doc, "~> 0.27", only: :dev, runtime: false}
     ]
   end
 
