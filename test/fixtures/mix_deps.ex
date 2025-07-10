@@ -1,4 +1,5 @@
 defmodule Fixtures.MixDeps do
+  @moduledoc false
   def deps do
     [
       %Mix.Dep{

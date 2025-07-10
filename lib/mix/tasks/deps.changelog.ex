@@ -2,22 +2,23 @@ defmodule Mix.Tasks.Deps.Changelog do
   @changelog_filename "deps.CHANGELOG.md"
   @snapshot_filename "deps.CHANGELOG.before.bin"
 
-  @shortdoc "Find additions to top-level dependency's CHANGELOG files upon update and accumulate them in a new `#{@changelog_filename}`. Any task can be specified to run to perform the update."
+  @shortdoc "Collect additions to top-level dependency's CHANGELOG files"
   @moduledoc """
-  #{@shortdoc}
+  Find additions to top-level dependency's CHANGELOG files upon update and accumulate them in a new
+  `#{@changelog_filename}`. Any task can be specified to run to perform the update.
 
   ## Examples
 
   ```bash
-  $ mix deps.changelog deps.update --all
-  $ mix deps.changelog igniter.upgrade --all
+  mix deps.changelog deps.update --all
+  mix deps.changelog igniter.upgrade --all
   ```
 
   ```bash
-  $ mix deps.changelog --before
-  $ mix deps.unlock assent
-  $ mix deps.get
-  $ mix deps.changelog --after
+  mix deps.changelog --before
+  mix deps.unlock assent
+  mix deps.get
+  mix deps.changelog --after
   ```
 
   ## Command line options
@@ -30,6 +31,7 @@ defmodule Mix.Tasks.Deps.Changelog do
   use Mix.Task
 
   defmodule Changelogs do
+    @moduledoc false
     @enforce_keys [:mix_dep]
     defstruct [:mix_dep, changelog_before: nil, changelog_after: nil]
 

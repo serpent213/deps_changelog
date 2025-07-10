@@ -1,28 +1,24 @@
 # deps.changelog
 
-Find additions to dependency's CHANGELOG files upon update and accumulate them in
-a new `deps.CHANGELOG.md`.
+Find additions to top-level dependency's CHANGELOG files upon update and accumulate them in a new
+`deps.CHANGELOG.md`. Any task can be specified to run to perform the update.
 
 ## Installation
 
-If not [available in Hex](https://hex.pm/docs/publish), the package can be installed
-by adding `deps_changelog` to your list of dependencies in `mix.exs`:
+The package is [available in Hex](https://hex.pm/packages/deps_changelog) and can be installed by adding
+`deps_changelog` to your list of dependencies in `mix.exs`:
 
 ```elixir
 def deps do
   [
-    {:deps_changelog,
-      git: "https://github.com/serpent213/deps_changelog.git",
-      branch: "master",
-      only: :dev}
+    {:deps_changelog, "~> 0.3", only: :dev, runtime: false}
   ]
 end
 ```
 
 ## Usage
 
-Run `mix deps.changelog igniter.upgrade [...]` instead of `mix igniter.upgrade`. Run `mix
-igniter.upgrade` instead of `mix deps.update`. File `deps.CHANGELOG.md` will be created
+Run `mix deps.changelog deps.update [...]` instead of `mix deps.update`. File `deps.CHANGELOG.md` will be created
 or updated when package updates happen.
 
 ### Aliases
@@ -47,6 +43,8 @@ When using [Igniter](https://hexdocs.pm/igniter/), you could add to your `mix.ex
     ]
   end
 ```
+
+Note that you might need to `Mix.Task.reenable("deps.changelog")` when bundling tasks within a single Mix session.
 
 ## Debugging
 

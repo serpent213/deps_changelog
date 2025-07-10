@@ -12,7 +12,9 @@ defmodule DepsChangelog.MixProject do
       aliases: aliases(),
       elixirc_paths: elixirc_paths(Mix.env()),
       description: description(),
-      package: package()
+      package: package(),
+      name: "deps_changelog",
+      docs: docs()
     ]
   end
 
@@ -29,26 +31,37 @@ defmodule DepsChangelog.MixProject do
     ]
   end
 
+  defp docs do
+    [
+      main: "readme",
+      extras: [
+        "README.md"
+      ],
+      formatters: ["html"]
+    ]
+  end
+
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:igniter, "~> 0.5", only: [:dev]}
+      {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
+      {:ex_doc, "~> 0.27", only: :dev, runtime: false},
+      {:expublish, "~> 2.5", only: :dev, runtime: false}
     ]
   end
 
   defp aliases do
     [
-      update: [
-        # Isolated processes/Mix runners seem to work best when shuffling deps
-        "cmd mix deps.changelog --before",
-        "cmd mix deps.update igniter",
-        "cmd mix igniter.upgrade --all",
-        "cmd mix deps.changelog --after",
-        fn _args ->
-          Mix.shell().info(
-            "Run `mix igniter.apply_upgrades igniter:old_version:new_version` to finish igniter update!"
-          )
-        end
+      update: ["deps.changelog deps.update --all"],
+      ci: [
+        "format --check-formatted",
+        "deps.unlock --check-unused",
+        "credo",
+
+        # Order might be important,
+        # see https://elixirforum.com/t/cant-run-hex-mix-tasks-in-alias/65649/13
+        fn _ -> Mix.ensure_application!(:hex) end,
+        "hex.audit"
       ]
     ]
   end

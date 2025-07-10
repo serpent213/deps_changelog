@@ -20,7 +20,10 @@ erl_crash.dump
 *.ez
 
 # Ignore package tarball (built via "mix hex.build").
-changelog_igniter-*.tar
+deps_changelog-*.tar
+
+# expublisher metadata
+RELEASE.md
 
 # Temporary files, for example, from tests.
 /tmp/
