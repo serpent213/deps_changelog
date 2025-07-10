@@ -1,0 +1,54 @@
+name: Elixir CI
+
+on:
+  push:
+    branches: [ master, develop ]
+  pull_request:
+    branches: [ master, develop ]
+
+env:
+  MIX_ENV: test
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Build and test
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Elixir
+      uses: erlef/setup-beam@v1
+      with:
+        elixir-version: '1.16.3'
+        otp-version: '26.0'
+
+    - name: Restore dependencies cache
+      uses: actions/cache@v4
+      with:
+        path: deps
+        key: ${{ runner.os }}-mix-${{ hashFiles('**/mix.lock') }}
+        restore-keys: ${{ runner.os }}-mix-
+
+    - name: Restore build cache
+      uses: actions/cache@v4
+      with:
+        path: _build
+        key: ${{ runner.os }}-build-${{ hashFiles('**/mix.lock') }}
+        restore-keys: ${{ runner.os }}-build-
+
+    - name: Install dependencies
+      run: mix deps.get
+
+    - name: Compile project
+      run: mix compile --warnings-as-errors
+
+    - name: Static analysis
+      run: mix ci
+
+    - name: Run tests
+      run: mix test
