@@ -63,7 +63,10 @@ defmodule DepsChangelog.MixProject do
       name: "deps_changelog",
       maintainers: ["Steffen Beyer"],
       licenses: ["0BSD"],
-      links: %{"GitHub" => "https://github.com/serpent213/deps_changelog"}
+      links: %{
+        "Changelog" => "https://github.com/serpent213/deps_changelog/blob/master/CHANGELOG.md",
+        "GitHub" => "https://github.com/serpent213/deps_changelog"
+      }
     ]
   end
 end
