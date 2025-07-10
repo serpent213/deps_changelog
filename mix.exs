@@ -10,7 +10,8 @@ defmodule DepsChangelog.MixProject do
       consolidate_protocols: Mix.env() != :dev,
       deps: deps(),
       aliases: aliases(),
-      elixirc_paths: elixirc_paths(Mix.env())
+      elixirc_paths: elixirc_paths(Mix.env()),
+      package: package()
     ]
   end
 
@@ -45,6 +46,15 @@ defmodule DepsChangelog.MixProject do
           )
         end
       ]
+    ]
+  end
+
+  defp package do
+    [
+      name: "deps_changelog",
+      maintainers: ["Steffen Beyer"],
+      licenses: ["0BSD"],
+      links: %{"GitHub" => "https://github.com/serpent213/deps_changelog"}
     ]
   end
 end
