@@ -44,7 +44,8 @@ When using [Igniter](https://hexdocs.pm/igniter/), you could add to your `mix.ex
   end
 ```
 
-Note that you might need to `Mix.Task.reenable("deps.changelog")` when bundling tasks within a single Mix session.
+Note that you might need to `Mix.Task.reenable("deps.changelog")` (or use `rerun`) when bundling tasks within
+a single Mix session.
 
 ## Debugging
 

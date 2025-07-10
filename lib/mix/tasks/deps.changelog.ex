@@ -107,7 +107,12 @@ defmodule Mix.Tasks.Deps.Changelog do
   def run([embedded_task | task_args]) do
     Mix.Task.reenable("deps.changelog")
     Mix.Task.run("deps.changelog", ["--before"])
+
+    # Not sure _why_ this is necessary, getting otherwise – sometimes:
+    # (UndefinedFunctionError) function Hex.Mix.overridden_deps/1 is undefined (module Hex.Mix is not available)
+    Mix.ensure_application!(:hex)
     Mix.Task.run(embedded_task, task_args)
+
     Mix.Task.reenable("deps.changelog")
     Mix.Task.run("deps.changelog", ["--after"])
   end
