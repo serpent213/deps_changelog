@@ -11,9 +11,13 @@ defmodule DepsChangelog.MixProject do
       deps: deps(),
       aliases: aliases(),
       elixirc_paths: elixirc_paths(Mix.env()),
+      description: description(),
       package: package()
     ]
   end
+
+  defp description,
+    do: "Capture dep's CHANGELOG updates during `mix deps.update` and collect in new file"
 
   defp elixirc_paths(:test), do: ["lib", "test/fixtures"]
   defp elixirc_paths(_), do: ["lib"]

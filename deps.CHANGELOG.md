@@ -6,6 +6,20 @@ Feel free to edit this file by hand. Updates will be inserted below the followin
 
 <!-- changelog -->
 
+_10. July 2025_
+---------------
+
+### `igniter` (0.6.13 ➞ 0.6.14)
+
+#### [v0.6.14](https://github.com/ash-project/igniter/compare/v0.6.13...v0.6.14) (2025-07-09)
+
+
+##### Bug Fixes:
+
+* a slew of fixes for config, code modification, deps addition, keywords by Zach Daniel
+
+
+
 _9. July 2025_
 --------------
 
