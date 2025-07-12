@@ -1,5 +1,10 @@
 # deps.changelog
 
+![Elixir CI](https://github.com/serpent213/deps_changelog/workflows/Elixir%20CI/badge.svg)
+[![License: MIT](https://img.shields.io/badge/License-0BSD-yellow.svg)](https://opensource.org/licenses/0BSD)
+[![Hex version badge](https://img.shields.io/hexpm/v/deps_changelog.svg)](https://hex.pm/packages/deps_changelog)
+[![Hexdocs badge](https://img.shields.io/badge/docs-hexdocs-purple)](https://hexdocs.pm/deps_changelog)
+
 Find additions to top-level dependency's CHANGELOG files upon update and accumulate them in a new
 `deps.CHANGELOG.md`. Any task can be specified to run to perform the update.
 
