@@ -297,7 +297,8 @@ defmodule Mix.Tasks.Deps.Changelog do
   end
 
   # from Igniter
-  defp dep_changes_in_order(old_deps_info, new_deps_info) do
+  @doc false
+  def dep_changes_in_order(old_deps_info, new_deps_info) do
     new_deps_info
     |> sort_deps()
     |> Enum.flat_map(fn dep ->
