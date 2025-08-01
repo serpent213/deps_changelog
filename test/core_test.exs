@@ -52,4 +52,67 @@ defmodule CoreTest do
     expected_deps_changelog = File.read!("#{home}/test/fixtures/updated_changelog.md")
     assert deps_changelog == expected_deps_changelog
   end
+
+  test "handles dependencies with :compile status" do
+    # Test the scenario where dep.status is :compile instead of {:ok, version}
+    # This should extract version from the lock info instead
+    dep_with_compile_status = %Mix.Dep{
+      app: :test_dep,
+      status: :compile,
+      opts: [
+        lock: {:hex, :test_dep, "1.2.3", "hash123", [:mix], [], "hexpm", "checksum456"}
+      ],
+      top_level: true
+    }
+
+    dep_with_ok_status = %Mix.Dep{
+      app: :test_dep,
+      status: {:ok, "1.0.0"},
+      opts: [
+        lock: {:hex, :test_dep, "1.0.0", "oldhash", [:mix], [], "hexpm", "oldchecksum"}
+      ],
+      top_level: true
+    }
+
+    old_deps = [dep_with_ok_status]
+    new_deps = [dep_with_compile_status]
+
+    # This should not crash and should detect the version change from 1.0.0 to 1.2.3
+    changes = Mix.Tasks.Deps.Changelog.dep_changes_in_order(old_deps, new_deps)
+    
+    assert length(changes) == 1
+    {app, old_version, new_version} = hd(changes)
+    assert app == :test_dep
+    assert old_version == %Version{major: 1, minor: 0, patch: 0}
+    assert new_version == %Version{major: 1, minor: 2, patch: 3}
+  end
+
+  test "handles dependencies when both old and new have :compile status" do
+    # Test when both old and new deps have :compile status
+    old_dep = %Mix.Dep{
+      app: :both_compile,
+      status: :compile,
+      opts: [
+        lock: {:hex, :both_compile, "2.0.0", "oldhash", [:mix], [], "hexpm", "oldchecksum"}
+      ],
+      top_level: true
+    }
+
+    new_dep = %Mix.Dep{
+      app: :both_compile,
+      status: :compile,
+      opts: [
+        lock: {:hex, :both_compile, "2.1.0", "newhash", [:mix], [], "hexpm", "newchecksum"}
+      ],
+      top_level: true
+    }
+
+    changes = Mix.Tasks.Deps.Changelog.dep_changes_in_order([old_dep], [new_dep])
+    
+    assert length(changes) == 1
+    {app, old_version, new_version} = hd(changes)
+    assert app == :both_compile
+    assert old_version == %Version{major: 2, minor: 0, patch: 0}
+    assert new_version == %Version{major: 2, minor: 1, patch: 0}
+  end
 end
