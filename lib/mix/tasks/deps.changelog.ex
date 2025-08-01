@@ -44,6 +44,8 @@ defmodule Mix.Tasks.Deps.Changelog do
 
   def run(["--before"]) do
     try do
+      # Compile dependencies to ensure status information is available
+      Mix.Task.run("deps.compile")
       original_deps_info = Mix.Dep.load_and_cache()
       changelogs_before = before_update(original_deps_info)
       record = {original_deps_info, changelogs_before}
@@ -112,6 +114,9 @@ defmodule Mix.Tasks.Deps.Changelog do
     # (UndefinedFunctionError) function Hex.Mix.overridden_deps/1 is undefined (module Hex.Mix is not available)
     Mix.ensure_application!(:hex)
     Mix.Task.run(embedded_task, task_args)
+
+    # Compile dependencies after update to ensure proper status information
+    Mix.Task.run("deps.compile")
 
     Mix.Task.reenable("deps.changelog")
     Mix.Task.run("deps.changelog", ["--after"])
@@ -274,20 +279,44 @@ defmodule Mix.Tasks.Deps.Changelog do
     |> elem(1)
   end
 
+  # Helper function to extract version from dependency, trying multiple sources
+  defp get_dep_version(dep) do
+    case dep.status do
+      {_status, version} when is_binary(version) -> 
+        version
+      _ ->
+        # Try to get version from lock info in opts
+        case Keyword.get(dep.opts, :lock) do
+          {_scm, _name, version, _hash, _build_tools, _deps, _repo, _checksum} when is_binary(version) ->
+            version
+          {_scm, _name, version, _hash} when is_binary(version) ->
+            version
+          _ -> nil
+        end
+    end
+  end
+
   # from Igniter
   defp dep_changes_in_order(old_deps_info, new_deps_info) do
     new_deps_info
     |> sort_deps()
     |> Enum.flat_map(fn dep ->
-      case Enum.find(old_deps_info, &(&1.app == dep.app)) do
+      case get_dep_version(dep) do
         nil ->
-          [{dep.app, nil, Version.parse!(elem(dep.status, 1))}]
-
-        %{status: {:ok, old_version}} ->
-          [{dep.app, Version.parse!(old_version), Version.parse!(elem(dep.status, 1))}]
-
-        _other ->
+          # Skip dependencies without any version information
           []
+
+        new_version ->
+          case Enum.find(old_deps_info, &(&1.app == dep.app)) do
+            nil ->
+              [{dep.app, nil, Version.parse!(new_version)}]
+
+            old_dep ->
+              case get_dep_version(old_dep) do
+                nil -> []
+                old_version -> [{dep.app, Version.parse!(old_version), Version.parse!(new_version)}]
+              end
+          end
       end
     end)
     |> Enum.reject(fn {_app, old, new} ->
