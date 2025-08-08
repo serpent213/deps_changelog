@@ -282,16 +282,21 @@ defmodule Mix.Tasks.Deps.Changelog do
   # Helper function to extract version from dependency, trying multiple sources
   defp get_dep_version(dep) do
     case dep.status do
-      {_status, version} when is_binary(version) -> 
+      {_status, version} when is_binary(version) ->
         version
+
       _ ->
         # Try to get version from lock info in opts
         case Keyword.get(dep.opts, :lock) do
-          {_scm, _name, version, _hash, _build_tools, _deps, _repo, _checksum} when is_binary(version) ->
+          {_scm, _name, version, _hash, _build_tools, _deps, _repo, _checksum}
+          when is_binary(version) ->
             version
+
           {_scm, _name, version, _hash} when is_binary(version) ->
             version
-          _ -> nil
+
+          _ ->
+            nil
         end
     end
   end
@@ -314,8 +319,11 @@ defmodule Mix.Tasks.Deps.Changelog do
 
             old_dep ->
               case get_dep_version(old_dep) do
-                nil -> []
-                old_version -> [{dep.app, Version.parse!(old_version), Version.parse!(new_version)}]
+                nil ->
+                  []
+
+                old_version ->
+                  [{dep.app, Version.parse!(old_version), Version.parse!(new_version)}]
               end
           end
       end
