@@ -18,8 +18,10 @@ defmodule CoreTest do
     File.cp_r!("#{home}/test/fixtures/after/deps/phoenix", "deps/phoenix/")
 
     dep_changes = [
-      {:ash, %Version{major: 3, minor: 4, patch: 45}, %Version{major: 3, minor: 4, patch: 49}},
-      {:phoenix, %Version{major: 1, minor: 7, patch: 16}, %Version{major: 1, minor: 7, patch: 18}}
+      {:ash, Mix.Tasks.Deps.Changelog.UnifiedVersion.parse!("3.4.45"),
+       Mix.Tasks.Deps.Changelog.UnifiedVersion.parse!("3.4.49")},
+      {:phoenix, Mix.Tasks.Deps.Changelog.UnifiedVersion.parse!("1.7.16"),
+       Mix.Tasks.Deps.Changelog.UnifiedVersion.parse!("1.7.18")}
     ]
 
     Mix.Tasks.Deps.Changelog.after_update(changelogs, dep_changes, @fixture_date)
@@ -43,7 +45,8 @@ defmodule CoreTest do
     File.cp_r!("#{home}/test/fixtures/after/deps/money", "deps/money/")
 
     dep_changes = [
-      {:money, %Version{major: 1, minor: 13, patch: 0}, %Version{major: 1, minor: 13, patch: 1}}
+      {:money, Mix.Tasks.Deps.Changelog.UnifiedVersion.parse!("1.13.0"),
+       Mix.Tasks.Deps.Changelog.UnifiedVersion.parse!("1.13.1")}
     ]
 
     Mix.Tasks.Deps.Changelog.after_update(changelogs, dep_changes, @fixture_date)
@@ -83,8 +86,8 @@ defmodule CoreTest do
     assert length(changes) == 1
     {app, old_version, new_version} = hd(changes)
     assert app == :test_dep
-    assert old_version == %Version{major: 1, minor: 0, patch: 0}
-    assert new_version == %Version{major: 1, minor: 2, patch: 3}
+    assert old_version.value == %Version{major: 1, minor: 0, patch: 0}
+    assert new_version.value == %Version{major: 1, minor: 2, patch: 3}
   end
 
   test "handles dependencies when both old and new have :compile status" do
@@ -112,7 +115,39 @@ defmodule CoreTest do
     assert length(changes) == 1
     {app, old_version, new_version} = hd(changes)
     assert app == :both_compile
-    assert old_version == %Version{major: 2, minor: 0, patch: 0}
-    assert new_version == %Version{major: 2, minor: 1, patch: 0}
+    assert old_version.value == %Version{major: 2, minor: 0, patch: 0}
+    assert new_version.value == %Version{major: 2, minor: 1, patch: 0}
+  end
+
+  test "handles git hash dependencies without crashing" do
+    # Test the heroicons-style dependency with git hash
+    old_dep = %Mix.Dep{
+      app: :heroicons,
+      status: {:ok, "abcd1234567890abcdef1234567890abcdef1234"},
+      opts: [
+        lock: {:git, :heroicons, "abcd1234567890abcdef1234567890abcdef1234", "hash"}
+      ],
+      top_level: true
+    }
+
+    new_dep = %Mix.Dep{
+      app: :heroicons,
+      status: {:ok, "88ab3a0d790e6a47404cba02800a6b25d2afae50"},
+      opts: [
+        lock: {:git, :heroicons, "88ab3a0d790e6a47404cba02800a6b25d2afae50", "newhash"}
+      ],
+      top_level: true
+    }
+
+    # This should not crash with "invalid version" error
+    changes = Mix.Tasks.Deps.Changelog.dep_changes_in_order([old_dep], [new_dep])
+
+    assert length(changes) == 1
+    {app, old_version, new_version} = hd(changes)
+    assert app == :heroicons
+    assert old_version.type == :git_hash
+    assert new_version.type == :git_hash
+    assert old_version.display == "abcd1234"
+    assert new_version.display == "88ab3a0d"
   end
 end

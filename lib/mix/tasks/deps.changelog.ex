@@ -167,9 +167,12 @@ defmodule Mix.Tasks.Deps.Changelog do
           |> shift_md_headings(2)
           |> Enum.join("\n")
 
+        old_display = if old_version, do: old_version.display, else: "new"
+        new_display = new_version.display
+
         acc <>
           String.trim_trailing("""
-          ### `#{package_name}` (#{old_version} ➞ #{new_version})
+          ### `#{package_name}` (#{old_display} ➞ #{new_display})
 
           #{insert_text}
           """) <> "\n\n\n"
@@ -279,6 +282,68 @@ defmodule Mix.Tasks.Deps.Changelog do
     |> elem(1)
   end
 
+  # Version wrapper to handle both semantic versions and git hashes
+  defmodule UnifiedVersion do
+    @moduledoc false
+    defstruct [:type, :value, :display]
+
+    @type t :: %__MODULE__{
+            type: :semantic | :git_hash,
+            value: Version.t() | String.t(),
+            display: String.t()
+          }
+
+    def parse!(version_string) when is_binary(version_string) do
+      cond do
+        git_hash?(version_string) ->
+          %__MODULE__{
+            type: :git_hash,
+            value: version_string,
+            display: String.slice(version_string, 0, 8)
+          }
+
+        semantic_version?(version_string) ->
+          case Version.parse(version_string) do
+            {:ok, version} ->
+              %__MODULE__{
+                type: :semantic,
+                value: version,
+                display: version_string
+              }
+
+            :error ->
+              # Treat as git reference if not a valid semantic version
+              %__MODULE__{
+                type: :git_hash,
+                value: version_string,
+                display: version_string
+              }
+          end
+
+        true ->
+          # Default to treating as git reference
+          %__MODULE__{
+            type: :git_hash,
+            value: version_string,
+            display: version_string
+          }
+      end
+    end
+
+    def parse!(nil), do: nil
+
+    defp git_hash?(version_string) do
+      String.length(version_string) == 40 and
+        String.match?(version_string, ~r/^[a-f0-9]+$/i)
+    end
+
+    defp semantic_version?(version_string) do
+      # Check if it looks like a semantic version (with or without 'v' prefix)
+      cleaned = String.replace_prefix(version_string, "v", "")
+      String.match?(cleaned, ~r/^\d+\.\d+(\.\d+)?/)
+    end
+  end
+
   # Helper function to extract version from dependency, trying multiple sources
   defp get_dep_version(dep) do
     case dep.status do
@@ -315,7 +380,7 @@ defmodule Mix.Tasks.Deps.Changelog do
         new_version ->
           case Enum.find(old_deps_info, &(&1.app == dep.app)) do
             nil ->
-              [{dep.app, nil, Version.parse!(new_version)}]
+              [{dep.app, nil, UnifiedVersion.parse!(new_version)}]
 
             old_dep ->
               case get_dep_version(old_dep) do
@@ -323,7 +388,10 @@ defmodule Mix.Tasks.Deps.Changelog do
                   []
 
                 old_version ->
-                  [{dep.app, Version.parse!(old_version), Version.parse!(new_version)}]
+                  [
+                    {dep.app, UnifiedVersion.parse!(old_version),
+                     UnifiedVersion.parse!(new_version)}
+                  ]
               end
           end
       end
