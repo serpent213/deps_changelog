@@ -61,8 +61,6 @@ iex> break! Mix.Tasks.Deps.Changelog.after_update/2
 iex> Mix.Task.run "deps.changelog", ["deps.update", "--all"]
 ```
 
-<!--
-Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
-and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
-be found at <https://hexdocs.pm/deps_changelog>.
--->
+## Contributions
+
+PRs against `develop` branch welcome!
