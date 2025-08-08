@@ -79,7 +79,7 @@ defmodule CoreTest do
 
     # This should not crash and should detect the version change from 1.0.0 to 1.2.3
     changes = Mix.Tasks.Deps.Changelog.dep_changes_in_order(old_deps, new_deps)
-    
+
     assert length(changes) == 1
     {app, old_version, new_version} = hd(changes)
     assert app == :test_dep
@@ -108,7 +108,7 @@ defmodule CoreTest do
     }
 
     changes = Mix.Tasks.Deps.Changelog.dep_changes_in_order([old_dep], [new_dep])
-    
+
     assert length(changes) == 1
     {app, old_version, new_version} = hd(changes)
     assert app == :both_compile
