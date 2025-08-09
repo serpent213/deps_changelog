@@ -301,9 +301,8 @@ defmodule Mix.Tasks.Deps.Changelog do
     |> elem(1)
   end
 
-  # Version wrapper to handle both semantic versions and git hashes
   defmodule UnifiedVersion do
-    @moduledoc false
+    @moduledoc "Version wrapper to handle both semantic versions and git hashes"
     defstruct [:type, :value, :display]
 
     @type t :: %__MODULE__{
@@ -357,9 +356,7 @@ defmodule Mix.Tasks.Deps.Changelog do
     end
 
     defp semantic_version?(version_string) do
-      # Check if it looks like a semantic version (with or without 'v' prefix)
-      cleaned = String.replace_prefix(version_string, "v", "")
-      String.match?(cleaned, ~r/^\d+\.\d+(\.\d+)?/)
+      String.match?(version_string, ~r/^\d+\.\d+\.\d+/)
     end
   end
 
