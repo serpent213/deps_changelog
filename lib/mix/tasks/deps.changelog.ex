@@ -106,6 +106,25 @@ defmodule Mix.Tasks.Deps.Changelog do
     end
   end
 
+  def run([]) do
+    Mix.shell().error("""
+    No task specified. Usage:
+
+      mix deps.changelog <task> [task_args]
+
+    Examples:
+      mix deps.changelog deps.update --all
+      mix deps.changelog igniter.upgrade --all
+
+    Or use manual mode:
+      mix deps.changelog --before
+      # perform updates manually
+      mix deps.changelog --after
+    """)
+
+    exit({:shutdown, 1})
+  end
+
   def run([embedded_task | task_args]) do
     Mix.Task.reenable("deps.changelog")
     Mix.Task.run("deps.changelog", ["--before"])
