@@ -42,6 +42,84 @@ defmodule Mix.Tasks.Deps.Changelog do
           }
   end
 
+  defmodule UnifiedVersion do
+    @moduledoc "Version wrapper to handle both semantic versions and git hashes"
+    defstruct [:type, :value, :display]
+
+    @type t :: %__MODULE__{
+            type: :semantic | :git_hash,
+            value: Version.t() | String.t(),
+            display: String.t()
+          }
+
+    def parse!(version_string) when is_binary(version_string) do
+      cond do
+        git_hash?(version_string) ->
+          %__MODULE__{
+            type: :git_hash,
+            value: version_string,
+            display: String.slice(version_string, 0, 8)
+          }
+
+        semantic_version?(version_string) ->
+          case Version.parse(version_string) do
+            {:ok, version} ->
+              %__MODULE__{
+                type: :semantic,
+                value: version,
+                display: version_string
+              }
+
+            :error ->
+              # Treat as git reference if not a valid semantic version
+              %__MODULE__{
+                type: :git_hash,
+                value: version_string,
+                display: version_string
+              }
+          end
+
+        true ->
+          # Default to treating as git reference
+          %__MODULE__{
+            type: :git_hash,
+            value: version_string,
+            display: version_string
+          }
+      end
+    end
+
+    def parse!(nil), do: nil
+
+    defp git_hash?(version_string) do
+      String.length(version_string) == 40 and
+        String.match?(version_string, ~r/^[a-f0-9]+$/i)
+    end
+
+    defp semantic_version?(version_string) do
+      String.match?(version_string, ~r/^\d+\.\d+\.\d+/)
+    end
+  end
+
+  def run([]) do
+    Mix.shell().error("""
+    No task specified. Usage:
+
+      mix deps.changelog <task> [task_args]
+
+    Examples:
+      mix deps.changelog deps.update --all
+      mix deps.changelog igniter.upgrade --all
+
+    Or use manual mode:
+      mix deps.changelog --before
+      # perform updates manually
+      mix deps.changelog --after
+    """)
+
+    exit({:shutdown, 1})
+  end
+
   def run(["--before"]) do
     try do
       # Compile dependencies to ensure status information is available
@@ -104,25 +182,6 @@ defmodule Mix.Tasks.Deps.Changelog do
       {:error, reason} ->
         Mix.shell().error("Failed to read #{@snapshot_filename}: #{:file.format_error(reason)}")
     end
-  end
-
-  def run([]) do
-    Mix.shell().error("""
-    No task specified. Usage:
-
-      mix deps.changelog <task> [task_args]
-
-    Examples:
-      mix deps.changelog deps.update --all
-      mix deps.changelog igniter.upgrade --all
-
-    Or use manual mode:
-      mix deps.changelog --before
-      # perform updates manually
-      mix deps.changelog --after
-    """)
-
-    exit({:shutdown, 1})
   end
 
   def run([embedded_task | task_args]) do
@@ -299,65 +358,6 @@ defmodule Mix.Tasks.Deps.Changelog do
       end
     end)
     |> elem(1)
-  end
-
-  defmodule UnifiedVersion do
-    @moduledoc "Version wrapper to handle both semantic versions and git hashes"
-    defstruct [:type, :value, :display]
-
-    @type t :: %__MODULE__{
-            type: :semantic | :git_hash,
-            value: Version.t() | String.t(),
-            display: String.t()
-          }
-
-    def parse!(version_string) when is_binary(version_string) do
-      cond do
-        git_hash?(version_string) ->
-          %__MODULE__{
-            type: :git_hash,
-            value: version_string,
-            display: String.slice(version_string, 0, 8)
-          }
-
-        semantic_version?(version_string) ->
-          case Version.parse(version_string) do
-            {:ok, version} ->
-              %__MODULE__{
-                type: :semantic,
-                value: version,
-                display: version_string
-              }
-
-            :error ->
-              # Treat as git reference if not a valid semantic version
-              %__MODULE__{
-                type: :git_hash,
-                value: version_string,
-                display: version_string
-              }
-          end
-
-        true ->
-          # Default to treating as git reference
-          %__MODULE__{
-            type: :git_hash,
-            value: version_string,
-            display: version_string
-          }
-      end
-    end
-
-    def parse!(nil), do: nil
-
-    defp git_hash?(version_string) do
-      String.length(version_string) == 40 and
-        String.match?(version_string, ~r/^[a-f0-9]+$/i)
-    end
-
-    defp semantic_version?(version_string) do
-      String.match?(version_string, ~r/^\d+\.\d+\.\d+/)
-    end
   end
 
   # Helper function to extract version from dependency, trying multiple sources
