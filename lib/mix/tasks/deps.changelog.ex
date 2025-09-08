@@ -346,18 +346,25 @@ defmodule Mix.Tasks.Deps.Changelog do
 
   # Helper function to extract version from dependency, trying multiple sources
   defp get_dep_version(dep) do
-    case dep.status do
-      {_status, version} when is_binary(version) ->
+    # Check lock first to properly handle Git dependencies
+    case Keyword.get(dep.opts, :lock) do
+      # Git dependency - ALWAYS use commit hash, not semantic version
+      {:git, _url, commit, _opts} when is_binary(commit) ->
+        commit
+
+      # Hex dependency with longer lock format
+      {_scm, _name, version, _hash, _build_tools, _deps, _repo, _checksum}
+      when is_binary(version) ->
+        version
+
+      # Hex dependency with shorter lock format  
+      {_scm, _name, version, _hash} when is_binary(version) ->
         version
 
       _ ->
-        # Try to get version from lock info in opts
-        case Keyword.get(dep.opts, :lock) do
-          {_scm, _name, version, _hash, _build_tools, _deps, _repo, _checksum}
-          when is_binary(version) ->
-            version
-
-          {_scm, _name, version, _hash} when is_binary(version) ->
+        # Fall back to status for deps without lock info
+        case dep.status do
+          {_status, version} when is_binary(version) ->
             version
 
           _ ->
