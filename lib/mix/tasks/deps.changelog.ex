@@ -43,53 +43,102 @@ defmodule Mix.Tasks.Deps.Changelog do
   end
 
   defmodule UnifiedVersion do
-    @moduledoc "Version wrapper to handle both semantic versions and git hashes"
-    defstruct [:type, :value, :display]
+    @moduledoc "Version wrapper to handle both semantic versions and git hashes with source info"
+    defstruct [:type, :value, :display, :source]
 
     @type t :: %__MODULE__{
             type: :semantic | :git_hash,
             value: Version.t() | String.t(),
-            display: String.t()
+            display: String.t(),
+            source: String.t() | nil
           }
 
-    def parse!(version_string) when is_binary(version_string) do
+    def parse!(version_string, source \\ nil)
+
+    def parse!(version_string, source) when is_binary(version_string) do
       cond do
+        # Check if it's a 40-character git hash
         git_hash?(version_string) ->
           %__MODULE__{
             type: :git_hash,
             value: version_string,
-            display: String.slice(version_string, 0, 8)
+            display: format_git_display(version_string, source),
+            source: source
           }
 
+        # Check if it looks like a semantic version or tag
         semantic_version?(version_string) ->
-          case Version.parse(version_string) do
+          # Remove 'v' prefix if present for parsing
+          cleaned = String.replace_prefix(version_string, "v", "")
+
+          case Version.parse(cleaned) do
             {:ok, version} ->
               %__MODULE__{
                 type: :semantic,
                 value: version,
-                display: version_string
+                # Keep original format with 'v' if present
+                display: version_string,
+                source: source
               }
 
             :error ->
-              # Treat as git reference if not a valid semantic version
+              # Not a valid semantic version, treat as tag/ref
               %__MODULE__{
                 type: :git_hash,
                 value: version_string,
-                display: version_string
+                display: version_string,
+                source: source
               }
           end
 
         true ->
-          # Default to treating as git reference
+          # Default to treating as git reference/tag
           %__MODULE__{
             type: :git_hash,
             value: version_string,
-            display: version_string
+            display: version_string,
+            source: source
           }
       end
     end
 
-    def parse!(nil), do: nil
+    def parse!(nil, _source), do: nil
+
+    defp format_git_display(hash, source) do
+      short_hash = String.slice(hash, 0, 8)
+
+      case extract_repo_info(source) do
+        nil -> short_hash
+        repo_info -> "#{repo_info}@#{short_hash}"
+      end
+    end
+
+    defp extract_repo_info(nil), do: nil
+    defp extract_repo_info(atom) when is_atom(atom), do: nil
+
+    defp extract_repo_info(url) when is_binary(url) do
+      cond do
+        # GitHub URL
+        String.contains?(url, "github.com") ->
+          case Regex.run(~r{github\.com[:/]([^/]+/[^/.]+)}, url) do
+            [_, repo] -> repo
+            _ -> nil
+          end
+
+        # Other Git URLs - just show domain
+        String.contains?(url, "git") ->
+          case URI.parse(url) do
+            %{host: host} when is_binary(host) ->
+              String.replace(host, "www.", "")
+
+            _ ->
+              nil
+          end
+
+        true ->
+          nil
+      end
+    end
 
     defp git_hash?(version_string) do
       String.length(version_string) == 40 and
@@ -97,7 +146,9 @@ defmodule Mix.Tasks.Deps.Changelog do
     end
 
     defp semantic_version?(version_string) do
-      String.match?(version_string, ~r/^\d+\.\d+\.\d+/)
+      # Check if it looks like a semantic version (with or without 'v' prefix)
+      cleaned = String.replace_prefix(version_string, "v", "")
+      String.match?(cleaned, ~r/^\d+\.\d+(\.\d+)?/)
     end
   end
 
@@ -130,7 +181,12 @@ defmodule Mix.Tasks.Deps.Changelog do
 
       case File.write(@snapshot_filename, :erlang.term_to_binary(record)) do
         :ok ->
-          Mix.shell().info("Changelog snapshot created successfully")
+          dep_count = length(original_deps_info |> Enum.filter(& &1.top_level))
+          changelog_count = length(changelogs_before |> Enum.filter(& &1.changelog_before))
+
+          Mix.shell().info(
+            "Snapshot created: #{dep_count} dependencies tracked, #{changelog_count} with CHANGELOG files"
+          )
 
         {:error, reason} ->
           Mix.shell().error(
@@ -153,14 +209,30 @@ defmodule Mix.Tasks.Deps.Changelog do
           new_deps_info = Mix.Dep.load_and_cache()
           dep_changes = dep_changes_in_order(original_deps_info, new_deps_info)
 
+          # Report detected changes
+          if length(dep_changes) > 0 do
+            Mix.shell().info("Detected dependency changes:")
+
+            Enum.each(dep_changes, fn {app, old_v, new_v} ->
+              old_display = if old_v, do: old_v.display, else: "new"
+              Mix.shell().info("  • #{app}: #{old_display} → #{new_v.display}")
+            end)
+          else
+            Mix.shell().info("No dependency changes detected")
+          end
+
           case after_update(changelogs_before, dep_changes) do
             {_, :updated} ->
-              Mix.shell().info("#{@changelog_filename} updated successfully")
+              Mix.shell().info("#{@changelog_filename} updated with changelog entries")
 
             {_, :no_changes} ->
-              Mix.shell().info(
-                "#{@changelog_filename} not updated (no changelog changes detected)"
-              )
+              if length(dep_changes) > 0 do
+                Mix.shell().info(
+                  "#{@changelog_filename} not updated (no CHANGELOG files found in updated dependencies)"
+                )
+              else
+                Mix.shell().info("#{@changelog_filename} not updated (no dependency changes)")
+              end
           end
         rescue
           e ->
@@ -185,15 +257,22 @@ defmodule Mix.Tasks.Deps.Changelog do
   end
 
   def run([embedded_task | task_args]) do
+    task_description =
+      if task_args == [], do: embedded_task, else: "#{embedded_task} #{Enum.join(task_args, " ")}"
+
+    Mix.shell().debug("Running deps.changelog with: #{task_description}")
+
     Mix.Task.reenable("deps.changelog")
     Mix.Task.run("deps.changelog", ["--before"])
 
     # Not sure _why_ this is necessary, getting otherwise – sometimes:
     # (UndefinedFunctionError) function Hex.Mix.overridden_deps/1 is undefined (module Hex.Mix is not available)
     Mix.ensure_application!(:hex)
+    Mix.shell().debug("Executing: mix #{task_description}")
     Mix.Task.run(embedded_task, task_args)
 
     # Compile dependencies after update to ensure proper status information
+    Mix.shell().debug("Compiling dependencies to ensure proper status...")
     Mix.Task.run("deps.compile")
 
     Mix.Task.reenable("deps.changelog")
@@ -360,24 +439,31 @@ defmodule Mix.Tasks.Deps.Changelog do
     |> elem(1)
   end
 
-  # Helper function to extract version from dependency, trying multiple sources
-  defp get_dep_version(dep) do
-    case dep.status do
-      {_status, version} when is_binary(version) ->
-        version
+  # Helper function to extract version and source from dependency
+  defp get_dep_version_and_source(dep) do
+    # Check lock first to properly handle Git dependencies
+    case Keyword.get(dep.opts, :lock) do
+      # Git dependency - use commit hash from lock, not semantic version
+      {:git, url, commit, _opts} when is_binary(commit) ->
+        {commit, url}
+
+      # Hex dependency with longer lock format
+      {_scm, _name, version, _hash, _build_tools, _deps, _repo, _checksum}
+      when is_binary(version) ->
+        {version, nil}
+
+      # Hex dependency with shorter lock format  
+      {_scm, _name, version, _hash} when is_binary(version) ->
+        {version, nil}
 
       _ ->
-        # Try to get version from lock info in opts
-        case Keyword.get(dep.opts, :lock) do
-          {_scm, _name, version, _hash, _build_tools, _deps, _repo, _checksum}
-          when is_binary(version) ->
-            version
-
-          {_scm, _name, version, _hash} when is_binary(version) ->
-            version
+        # Fall back to status for deps without lock info
+        case dep.status do
+          {_status, version} when is_binary(version) ->
+            {version, nil}
 
           _ ->
-            nil
+            {nil, nil}
         end
     end
   end
@@ -388,32 +474,33 @@ defmodule Mix.Tasks.Deps.Changelog do
     new_deps_info
     |> sort_deps()
     |> Enum.flat_map(fn dep ->
-      case get_dep_version(dep) do
-        nil ->
+      case get_dep_version_and_source(dep) do
+        {nil, _} ->
           # Skip dependencies without any version information
           []
 
-        new_version ->
+        {new_version, new_source} ->
           case Enum.find(old_deps_info, &(&1.app == dep.app)) do
             nil ->
-              [{dep.app, nil, UnifiedVersion.parse!(new_version)}]
+              [{dep.app, nil, UnifiedVersion.parse!(new_version, new_source)}]
 
             old_dep ->
-              case get_dep_version(old_dep) do
-                nil ->
+              case get_dep_version_and_source(old_dep) do
+                {nil, _} ->
                   []
 
-                old_version ->
+                {old_version, old_source} ->
                   [
-                    {dep.app, UnifiedVersion.parse!(old_version),
-                     UnifiedVersion.parse!(new_version)}
+                    {dep.app, UnifiedVersion.parse!(old_version, old_source),
+                     UnifiedVersion.parse!(new_version, new_source)}
                   ]
               end
           end
       end
     end)
     |> Enum.reject(fn {_app, old, new} ->
-      old == new
+      # Compare both value and source
+      old && new && old.value == new.value && old.source == new.source
     end)
   end
 
