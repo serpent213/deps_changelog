@@ -257,22 +257,15 @@ defmodule Mix.Tasks.Deps.Changelog do
   end
 
   def run([embedded_task | task_args]) do
-    task_description =
-      if task_args == [], do: embedded_task, else: "#{embedded_task} #{Enum.join(task_args, " ")}"
-
-    Mix.shell().debug("Running deps.changelog with: #{task_description}")
-
     Mix.Task.reenable("deps.changelog")
     Mix.Task.run("deps.changelog", ["--before"])
 
     # Not sure _why_ this is necessary, getting otherwise – sometimes:
     # (UndefinedFunctionError) function Hex.Mix.overridden_deps/1 is undefined (module Hex.Mix is not available)
     Mix.ensure_application!(:hex)
-    Mix.shell().debug("Executing: mix #{task_description}")
     Mix.Task.run(embedded_task, task_args)
 
     # Compile dependencies after update to ensure proper status information
-    Mix.shell().debug("Compiling dependencies to ensure proper status...")
     Mix.Task.run("deps.compile")
 
     Mix.Task.reenable("deps.changelog")

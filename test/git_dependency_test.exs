@@ -45,14 +45,13 @@ defmodule GitDependencyTest do
         # Same version in mix.exs
         status: {:ok, "1.0.0"},
         opts: [
-          lock:
-            {
-              :git,
-              "https://github.com/example/repo.git",
-              # Different commit (40 chars)
-              "def456789012345678901234567890abcdef4567",
-              []
-            }
+          lock: {
+            :git,
+            "https://github.com/example/repo.git",
+            # Different commit (40 chars)
+            "def456789012345678901234567890abcdef4567",
+            []
+          }
         ],
         deps: []
       }
@@ -147,14 +146,13 @@ defmodule GitDependencyTest do
         top_level: true,
         status: {:ok, "1.0.0"},
         opts: [
-          lock:
-            {
-              :git,
-              "https://github.com/myuser/library.git",
-              # Same commit, different repo
-              "1234567890123456789012345678901234567890",
-              []
-            }
+          lock: {
+            :git,
+            "https://github.com/myuser/library.git",
+            # Same commit, different repo
+            "1234567890123456789012345678901234567890",
+            []
+          }
         ],
         deps: []
       }

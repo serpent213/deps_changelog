@@ -121,14 +121,13 @@ defmodule ComprehensiveTest do
         top_level: true,
         status: {:ok, "1.0.0"},
         opts: [
-          lock:
-            {
-              :git,
-              "https://github.com/myfork/repo.git",
-              # Same commit, different repo
-              "abc123def456789012345678901234567890abcd",
-              []
-            }
+          lock: {
+            :git,
+            "https://github.com/myfork/repo.git",
+            # Same commit, different repo
+            "abc123def456789012345678901234567890abcd",
+            []
+          }
         ],
         deps: []
       }
