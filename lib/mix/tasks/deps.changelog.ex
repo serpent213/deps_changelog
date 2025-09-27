@@ -437,7 +437,7 @@ defmodule Mix.Tasks.Deps.Changelog do
     # Check lock first to properly handle Git dependencies
     case Keyword.get(dep.opts, :lock) do
       # Git dependency - use commit hash from lock, not semantic version
-      {:git, url, commit, _opts} when is_binary(commit) ->
+      {:git, url, commit, _opts} when is_binary(url) and is_binary(commit) ->
         {commit, url}
 
       # Hex dependency with longer lock format
